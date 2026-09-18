@@ -150,17 +150,20 @@
   .chart-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
   .province-rows{ display:flex; flex-direction:column; gap:10px; }
   .chart-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-l); padding:16px 18px; display:flex; flex-direction:column; gap:10px; min-width:0; box-shadow: var(--shadow); }
+  .chart-grid .chart-card{ opacity:0; animation:fadeSlideIn .55s ease both; }
+  .chart-grid .chart-card:nth-child(2){ animation-delay:.12s; }
   .chart-head h3{ font-size:14px; font-weight:700; }
   .chart-head p{ margin:2px 0 0; font-size:12px; color:var(--muted); }
   .chart-svg{ width:100%; height:auto; display:block; overflow:visible; }
   .chart-svg .axis-line{ stroke:var(--border-strong); stroke-width:1; }
   .chart-svg .grid-line{ stroke:var(--border); stroke-width:1; stroke-dasharray:3 3; }
   .chart-svg .axis-label{ fill:var(--muted); font-size:9.5px; font-family:var(--font-body); }
-  .chart-svg .bar{ fill:var(--accent); }
+  .chart-svg .bar{ fill:var(--accent); transform-box:fill-box; transform-origin:center bottom; animation:barGrow .6s cubic-bezier(.22,1,.36,1) both; }
   .chart-svg .area{ fill:var(--accent-tint); }
   .chart-svg .line{ fill:none; stroke:var(--accent); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   .chart-svg .dot{ fill:var(--accent); }
   .chart-svg .dot-ring{ fill:var(--surface); stroke:var(--accent); stroke-width:2; }
+  @keyframes barGrow{ from{ transform:scaleY(0); opacity:.3; } to{ transform:scaleY(1); opacity:1; } }
 
   .funnel{ display:flex; flex-direction:column; gap:12px; }
   .funnel-row{ display:grid; grid-template-columns: 96px 1fr 56px; align-items:center; gap:10px; }
@@ -170,13 +173,15 @@
   .funnel-pct{ font-size:12px; color:var(--muted); text-align:right; }
 
   .donut-row{ display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
-  .donut{ width:118px; height:118px; border-radius:50%; flex:none; position:relative; }
+  .donut{ width:118px; height:118px; border-radius:50%; flex:none; position:relative; animation:donutIn .7s cubic-bezier(.22,1,.36,1) both; }
   .donut::after{ content:""; position:absolute; inset:23%; border-radius:50%; background:var(--surface); }
   .donut-legend{ display:flex; flex-direction:column; gap:8px; font-size:12.5px; flex:1; min-width:160px; }
-  .donut-legend-item{ display:flex; align-items:center; gap:8px; }
+  .donut-legend-item{ display:flex; align-items:center; gap:8px; opacity:0; animation:fadeSlideIn .5s ease both; }
   .donut-legend-dot{ width:10px; height:10px; border-radius:3px; flex:none; }
   .donut-legend-label{ flex:1; color:var(--ink-2); }
   .donut-legend-value{ color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  @keyframes donutIn{ from{ transform:scale(.4) rotate(-90deg); opacity:0; } to{ transform:scale(1) rotate(0deg); opacity:1; } }
+  @keyframes fadeSlideIn{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
 
   @media (max-width: 720px){
     .chart-grid{ grid-template-columns: 1fr; }
@@ -299,6 +304,20 @@
 
   <section class="kpis" id="kpis" aria-label="Tổng quan"></section>
 
+  <section class="toolbar">
+    <input id="searchInput" type="search" placeholder="Tìm theo tên hoặc số điện thoại…" />
+    <select id="filterTinh"></select>
+    <select id="filterTrangThai"></select>
+    <select id="filterPhuTrach"></select>
+  </section>
+
+  <section class="list" id="leadList"></section>
+  <div class="empty" id="emptyState" hidden>
+    <div class="empty-mark">📋</div>
+    <h3 id="emptyTitle">Chưa có khách hàng nào</h3>
+    <p id="emptyDesc">Thêm khách hàng đầu tiên từ số điện thoại quảng cáo về, đội sale sẽ thấy ngay tại đây.</p>
+  </div>
+
   <section class="breakdown" id="breakdown">
     <div class="breakdown-title">Phân bổ theo trạng thái</div>
     <div id="breakdownRows"></div>
@@ -329,19 +348,6 @@
     </div>
   </section>
 
-  <section class="toolbar">
-    <input id="searchInput" type="search" placeholder="Tìm theo tên hoặc số điện thoại…" />
-    <select id="filterTinh"></select>
-    <select id="filterTrangThai"></select>
-    <select id="filterPhuTrach"></select>
-  </section>
-
-  <section class="list" id="leadList"></section>
-  <div class="empty" id="emptyState" hidden>
-    <div class="empty-mark">📋</div>
-    <h3 id="emptyTitle">Chưa có khách hàng nào</h3>
-    <p id="emptyDesc">Thêm khách hàng đầu tiên từ số điện thoại quảng cáo về, đội sale sẽ thấy ngay tại đây.</p>
-  </div>
 </div>
 
 <datalist id="peopleNames"></datalist>
@@ -779,7 +785,8 @@
       var h = maxVal ? (b.count/maxVal)*PH : 0;
       var x = PL + i*band + (band-barW)/2;
       var y = PT + PH - h;
-      return '<rect class="bar" x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+Math.max(0,h).toFixed(1)+'" rx="3"><title>'+esc(b.label)+': '+b.count+' khách hàng</title></rect>';
+      var delay = (i*45).toFixed(0);
+      return '<rect class="bar" style="animation-delay:'+delay+'ms" x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+Math.max(0,h).toFixed(1)+'" rx="3"><title>'+esc(b.label)+': '+b.count+' khách hàng</title></rect>';
     }).join("");
     var labels = buckets.map(function(b, i){
       var x = PL + i*band + band/2;
@@ -832,7 +839,7 @@
     }
     els.donutSourceLegend.innerHTML = counts.map(function(c, i){
       var pct = total ? Math.round(c.count/total*100) : 0;
-      return '<div class="donut-legend-item">' +
+      return '<div class="donut-legend-item" style="animation-delay:'+(i*90)+'ms">' +
         '<span class="donut-legend-dot" style="background:var('+varNames[i]+');"></span>' +
         '<span class="donut-legend-label">'+esc(c.label)+'</span>' +
         '<span class="donut-legend-value num">'+c.count+' · '+pct+'%</span>' +
