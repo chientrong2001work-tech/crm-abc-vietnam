@@ -288,6 +288,7 @@
     <div class="topbar-actions">
       <span class="viewer-chip" id="viewerChip" hidden></span>
       <button class="btn btn-ghost" id="logoutBtn" type="button">Đăng xuất</button>
+      <button class="btn btn-ghost" id="addUserBtn" type="button">+ Thêm tài khoản</button>
       <button class="btn btn-ghost" id="exportBtn" type="button">Xuất CSV</button>
       <button class="btn btn-primary" id="addBtn" type="button">+ Thêm khách hàng</button>
     </div>
@@ -389,6 +390,30 @@
     <div class="modal-actions">
       <button type="button" class="btn btn-ghost" id="cancelAdd">Huỷ</button>
       <button type="submit" class="btn btn-primary" id="submitAdd">Lưu khách hàng</button>
+    </div>
+  </form>
+</div>
+<div class="overlay" id="addUserOverlay" hidden>
+  <form class="modal" id="addUserForm">
+    <h2>Thêm tài khoản nhân viên</h2>
+    <div class="field">
+      <label for="u_email">Email đăng nhập *</label>
+      <input id="u_email" type="email" required maxlength="120" placeholder="ten@congty.com" />
+    </div>
+    <div class="field">
+      <label for="u_ten">Họ tên - không bắt buộc</label>
+      <input id="u_ten" maxlength="80" placeholder="VD: Nguyễn Văn A" />
+    </div>
+    <div class="field">
+      <label for="u_pass">Mật khẩu tạm thời *</label>
+      <input id="u_pass" type="text" required minlength="6" maxlength="60" placeholder="Ít nhất 6 ký tự" />
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="genPassBtn">Tạo mật khẩu ngẫu nhiên</button>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="cancelAddUser">Huỷ</button>
+      <button type="submit" class="btn btn-primary" id="submitAddUser">Tạo tài khoản</button>
     </div>
   </form>
 </div>
@@ -1014,6 +1039,52 @@
 
   document.getElementById("addBtn").addEventListener("click", openAdd);
   document.getElementById("cancelAdd").addEventListener("click", closeAdd);
+
+  document.getElementById("addUserBtn").addEventListener("click", function(){
+    document.getElementById("addUserForm").reset();
+    document.getElementById("addUserOverlay").hidden = false;
+    setTimeout(function(){ document.getElementById("u_email").focus(); }, 30);
+  });
+  document.getElementById("cancelAddUser").addEventListener("click", function(){
+    document.getElementById("addUserOverlay").hidden = true;
+  });
+  document.getElementById("addUserOverlay").addEventListener("click", function(e){
+    if(e.target === document.getElementById("addUserOverlay")) document.getElementById("addUserOverlay").hidden = true;
+  });
+  document.getElementById("genPassBtn").addEventListener("click", function(){
+    var chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    var out = "";
+    for(var i=0;i<10;i++){ out += chars.charAt(Math.floor(Math.random()*chars.length)); }
+    document.getElementById("u_pass").value = out;
+  });
+  document.getElementById("addUserForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var email = document.getElementById("u_email").value.trim();
+    var pass = document.getElementById("u_pass").value;
+    var ten = document.getElementById("u_ten").value.trim();
+    if(!email || pass.length < 6) return;
+    var btn = document.getElementById("submitAddUser");
+    btn.disabled = true; btn.textContent = "Đang tạo…";
+    var sub = firebase.initializeApp(firebase.app().options, "Secondary" + Date.now());
+    sub.auth().createUserWithEmailAndPassword(email, pass).then(function(cred){
+      var p = ten ? cred.user.updateProfile({ displayName: ten }) : Promise.resolve();
+      return p.then(function(){ return sub.auth().signOut(); });
+    }).then(function(){
+      return sub.delete();
+    }).then(function(){
+      btn.disabled = false; btn.textContent = "Tạo tài khoản";
+      document.getElementById("addUserOverlay").hidden = true;
+      alertInline("Đã tạo tài khoản " + email + ". Gửi email và mật khẩu này cho nhân viên để họ đăng nhập.");
+    }).catch(function(err){
+      btn.disabled = false; btn.textContent = "Tạo tài khoản";
+      var msg = "Không tạo được tài khoản.";
+      if(err && err.code === "auth/email-already-in-use") msg = "Email này đã có tài khoản rồi.";
+      else if(err && err.code === "auth/invalid-email") msg = "Email không hợp lệ.";
+      else if(err && err.code === "auth/weak-password") msg = "Mật khẩu quá yếu, cần ít nhất 6 ký tự.";
+      alertInline(msg);
+      try{ sub.delete(); }catch(e2){}
+    });
+  });
   els.addOverlay.addEventListener("click", function(e){ if(e.target === els.addOverlay) closeAdd(); });
   els.detailOverlay.addEventListener("click", function(e){ if(e.target === els.detailOverlay) closeDetail(); });
 
